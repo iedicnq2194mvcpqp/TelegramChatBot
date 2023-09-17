@@ -22,7 +22,7 @@ if not video:
     video = yt_service.get_channel_video_stats()
 
 
-def wait_statistics(video_id):
+def write_statistics(video_id):
     time.sleep(3600)
     db_service.remove_video_ids()
     db_service.insert_video_id(video_id)
@@ -45,7 +45,7 @@ def check_update():
         video = db_service.get_latest_video_id()
         if not video:
             video = yt_service.get_channel_video_stats()
-        wait_statistics(video_id)
+        write_statistics(video_id)
 
 
 schedule.every().minutes.do(lambda: check_update())
@@ -53,7 +53,8 @@ schedule.every().minutes.do(lambda: check_update())
 
 def make_markup():
     markup = types.ReplyKeyboardMarkup()
-    btn1 = types.KeyboardButton('Открыть канал')
+    yt_channel = types.WebAppInfo("https://www.youtube.com/@Popularpolitics")
+    btn1 = types.KeyboardButton('Открыть канал', web_app=yt_channel)
     btn2 = types.KeyboardButton('Посмотреть статистику последнего видео')
     markup.row(btn1, btn2)
     return markup
@@ -62,13 +63,13 @@ def make_markup():
 @bot.message_handler(commands=['start'])
 def start(message):
     db_service.insert_chat_id(message.chat.id)
-    bot.send_message(message.chat.id, 'Тест', reply_markup=make_markup())
+    bot.send_message(message.chat.id, strings.start_str, reply_markup=make_markup())
     bot.register_next_step_handler(message, chat)
 
 
 @bot.message_handler(commands=['help'])
 def help(message):
-    bot.send_message(message.chat.id, 'Это бот для Штабов Навального, который собирает статистику с видео канала "Популярная политика". Для начала напишите /start')
+    bot.send_message(message.chat.id, strings.help_str)
 
 
 @bot.message_handler(commands=['channel'])
@@ -85,18 +86,16 @@ def stats(message):
     res = strings.generate_statistics_string(video_name, json_msg['viewCount'], json_msg['likeCount'], json_msg['commentCount'])
     bot.send_message(message.chat.id, res)
     # Чтобы бот постил в ТГ канал:
-    bot.send_message(dotenv_values()['CHANNEL_ID'], res)
+    # bot.send_message(dotenv_values()['CHANNEL_ID'], res)
 
 
 @bot.message_handler()
 def chat(message):
     if message.text.lower() == 'открыть канал':
-        bot.send_message(message.chat.id,'Откройте канал "Популярная политика" на YouTube по этой ссылке:\nhttps://www.youtube.com/@Popularpolitics')
+        bot.send_message(message.chat.id,strings.channel_str)
     if message.text.lower() == 'посмотреть статистику последнего видео':
         stats(message)
 
-
-# bot.infinity_polling()
 
 bot_polling_thread = threading.Thread(target=bot.infinity_polling)
 bot_polling_thread.daemon = True
